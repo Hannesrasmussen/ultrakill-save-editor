@@ -1,5 +1,7 @@
 # Ultrakill Save Editor
 
+![GitHub release](https://img.shields.io/github/v/release/Hannesrasmussen/ultrakill-save-editor) ![Status](https://img.shields.io/badge/status-in%20development-orange)
+
 ![.NET](https://img.shields.io/badge/.NET-8.0-blue) ![Electron](https://img.shields.io/badge/Electron-planned-lightgrey) ![License](https://img.shields.io/badge/license-MIT-green) ![GitHub repo size](https://img.shields.io/github/repo-size/Hannesrasmussen/ultrakill-save-editor) ![GitHub last commit](https://img.shields.io/github/last-commit/Hannesrasmussen/ultrakill-save-editor)
 
 Desktop save editor for **ULTRAKILL** built with an Electron frontend and a C# CLI backend.
