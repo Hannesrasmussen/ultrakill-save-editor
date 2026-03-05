@@ -7,11 +7,11 @@ Desktop save editor for **ULTRAKILL** built with an Electron frontend and a C# C
 The project is currently in early development. The repository currently contains the backend CLI responsible for reading and writing the game's save files. A graphical interface will be added later.
 
 > [!IMPORTANT]
-> **ULTRAKILL** is designed as a skill-based game where overcoming its challenges is a core part of the experience. Skipping that process may cause players to miss out on what makes the game fun and rewarding.
+> **ULTRAKILL** is designed as a skill-based game where overcoming its challenges is part of the intended experience. Skipping that process may cause players to miss out on what makes the game rewarding.
 >
-> For that reason, this application intentionally does **not** provide any way to modify **Cyber Grind scores** or **Speedrun times**, as these represent competitive achievements.
+> This editor intentionally does **not** allow direct modification of **Cyber Grind scores** or **Speedrun times**, as these represent recorded gameplay performance and competitive achievements.
 >
-> Other values such as level ranks remain editable because they primarily affect personal progression within a save file.
+> Some progression values such as **level ranks** remain editable. When doing so, the editor will only assign the **minimum values required by the game** to satisfy that rank rather than allowing arbitrary performance values.
 >
 > This tool exists primarily for experimentation, debugging, and save inspection. Players are encouraged to try completing the game's challenges normally before modifying their saves.
 
