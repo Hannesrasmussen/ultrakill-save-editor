@@ -6,7 +6,26 @@ Desktop save editor for **ULTRAKILL** built with an Electron frontend and a C# C
 
 The project is currently in early development. The repository currently contains the backend CLI responsible for reading and writing the game's save files. A graphical interface will be added later.
 
----
+> [!IMPORTANT]
+> **ULTRAKILL** is designed as a skill-based game where overcoming its challenges is a core part of the experience. Skipping that process may cause players to miss out on what makes the game fun and rewarding.
+>
+> For that reason, this application intentionally does **not** provide any way to modify **Cyber Grind scores** or **Speedrun times**, as these represent competitive achievements.
+>
+> Other values such as level ranks remain editable because they primarily affect personal progression within a save file.
+>
+> This tool exists primarily for experimentation, debugging, and save inspection. Players are encouraged to try completing the game's challenges normally before modifying their saves.
+
+## Table of Contents
+
+- [Disclaimer](#disclaimer)
+- [Current Status](#current-status)
+- [Architecture](#architecture)
+- [Repository Structure](#repository-structure)
+- [Development](#development)
+  - [Development Requirements](#development-requirements)
+- [Troubleshooting](#troubleshooting)
+- [Related Projects](#related-projects)
+- [License](#license)
 
 ## Disclaimer
 
@@ -15,8 +34,6 @@ This project is an independent tool for inspecting and modifying save files from
 ULTRAKILL and all related assets, screenshots, and trademarks are the property of their respective owners. This project is not affiliated with or endorsed by the developers or publishers of the game.
 
 Screenshots used in the interface are included solely for identification and reference.
-
----
 
 ## Current Status
 
@@ -30,13 +47,11 @@ The CLI can:
 
 A graphical desktop interface will later be implemented using **Electron**.
 
----
-
 ## Architecture
 
 The project is designed around a simple separation of responsibilities.
 
-```id="c6f43y"
+```
 Electron UI
       │
       ▼
@@ -48,11 +63,9 @@ ULTRAKILL save files (.bepis)
 
 The CLI handles all serialization logic. The Electron application will provide the user interface and call the CLI internally.
 
----
-
 ## Repository Structure
 
-```id="k3sntb"
+```
 ultrakill-save-editor
 │
 ├── cli
@@ -74,8 +87,6 @@ ultrakill-save-editor
 
 The CLI project lives in `cli/src`. The Electron frontend will be developed in the `electron` directory.
 
----
-
 ## Development
 
 The CLI is written in **C#** and targets **.NET 8**.
@@ -94,26 +105,12 @@ The following tools are required for development:
 
 Development requires access to the following assemblies from a local ULTRAKILL installation:
 
-```id="l0uv9x"
+```
 Assembly-CSharp.dll
 UnityEngine.CoreModule.dll
 ```
 
 These files are part of the game distribution and are therefore **not included in this repository**.
-
----
-
-## Contributing
-
-Contributions are welcome.
-
-If you find a bug or have an improvement in mind, feel free to open an issue or submit a pull request.
-
-Please keep changes small and focused. The goal of the project is to keep the codebase straightforward and easy to understand.
-
-Low-effort or automated pull requests that do not meaningfully improve the project will be closed. Repeated spam submissions may result in the user being blocked from contributing.
-
----
 
 ## Troubleshooting
 
@@ -123,15 +120,11 @@ The CLI attempts to locate the game installation automatically. If the game is i
 
 Support for additional library locations may be added later.
 
----
-
 ### Save files become corrupted
 
 Always keep backups of your save files before modifying them. The UI will attempt to encourage this once the graphical interface is implemented.
 
 The tool attempts to reconstruct the original save format as closely as possible, but the format is controlled by the game and may change in future updates. If this happens, the editor may need to be updated accordingly.
-
----
 
 ### The game updated and the editor stopped working
 
