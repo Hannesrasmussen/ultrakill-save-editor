@@ -76,7 +76,6 @@ function toBoolean(value: unknown): boolean {
 
 	return false;
 }
-
 </script>
 
 <template>

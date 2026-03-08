@@ -207,10 +207,7 @@ function onItemIconError(itemId: string) {
 					</div>
 
 					<div class="flex shrink-0 flex-col items-end gap-2">
-						<span
-							v-if="isWeaponFamily"
-							class="text-xs text-muted-foreground"
-						>
+						<span v-if="isWeaponFamily" class="text-xs text-muted-foreground">
 							{{
 								item.isAlternate
 									? alternateUnlocked

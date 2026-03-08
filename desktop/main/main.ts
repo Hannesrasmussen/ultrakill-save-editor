@@ -250,7 +250,8 @@ ipcMain.handle(
 		const prefsPath = resolvePreferencesFilePath(slotDirectory);
 
 		await fs.mkdir(path.dirname(prefsPath), { recursive: true });
-		const priorWrite = preferencesWriteQueue.get(prefsPath) ?? Promise.resolve();
+		const priorWrite =
+			preferencesWriteQueue.get(prefsPath) ?? Promise.resolve();
 		const queuedWrite = priorWrite
 			.catch(() => undefined)
 			.then(() => writePreferencesWithRetry(prefsPath, data));
