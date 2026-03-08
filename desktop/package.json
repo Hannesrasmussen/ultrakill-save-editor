@@ -1,0 +1,41 @@
+{
+	"name": "ultrakill-save-editor-desktop",
+	"version": "0.1.0",
+	"main": "main/bootstrap.cjs",
+	"scripts": {
+		"dev": "concurrently -k \"pnpm dev:renderer\" \"pnpm dev:electron\"",
+		"dev:renderer": "vite --host localhost --port 5173 --strictPort",
+		"dev:electron": "wait-on tcp:5173 && set VITE_DEV_SERVER_URL=http://localhost:5173&& electron ./main/bootstrap.cjs",
+		"build:preload": "esbuild preload/preload.ts --bundle --platform=node --external:electron --outfile=preload/preload.js",
+		"app": "electron ."
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"packageManager": "pnpm@10.8.1",
+	"dependencies": {
+		"@vueuse/core": "^14.2.1",
+		"class-variance-authority": "^0.7.1",
+		"clsx": "^2.1.1",
+		"electron": "^40.8.0",
+		"lucide-vue-next": "^0.577.0",
+		"reka-ui": "^2.9.0",
+		"tailwind-merge": "^3.5.0",
+		"vue": "^3.5.29",
+		"vue-router": "^5.0.3",
+		"vue-tsc": "^3.2.5"
+	},
+	"devDependencies": {
+		"@tailwindcss/vite": "^4.2.1",
+		"@vitejs/plugin-vue": "^6.0.4",
+		"concurrently": "^9.2.1",
+		"esbuild": "^0.27.3",
+		"prettier": "^3.8.1",
+		"tailwindcss": "^4.2.1",
+		"tsx": "^4.21.0",
+		"tw-animate-css": "^1.4.0",
+		"typescript": "^5.9.3",
+		"vite": "^7.3.1",
+		"wait-on": "^9.0.4"
+	}
+}

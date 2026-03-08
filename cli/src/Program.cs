@@ -10,6 +10,7 @@ static class Program
         Console.WriteLine("  decode <input.bepis> <output.json>");
         Console.WriteLine("  encode <input.json> <output.bepis>");
         Console.WriteLine("  scan");
+        Console.WriteLine("  decode-save [slotDirectory]");
     }
 
     static void Main(string[] args)
@@ -20,7 +21,7 @@ static class Program
             return;
         }
 
-        var command = args[0].ToLower();
+        var command = args[0].ToLowerInvariant();
 
         try
         {
@@ -38,6 +39,10 @@ static class Program
                     Locator.Run();
                     break;
 
+                case "decode-save":
+                    SaveDecoder.Run(args);
+                    break;
+
                 default:
                     Console.WriteLine("Unknown command.");
                     Console.WriteLine();
@@ -47,8 +52,8 @@ static class Program
         }
         catch (Exception ex)
         {
-            Console.WriteLine("Error:");
-            Console.WriteLine(ex.Message);
+            Console.Error.WriteLine("Error:");
+            Console.Error.WriteLine(ex.Message);
         }
     }
 }

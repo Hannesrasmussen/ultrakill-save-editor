@@ -5,14 +5,8 @@ namespace UltrakillSaveCli.Commands;
 
 static class Decoder
 {
-    public static void Run(string[] args)
+    public static object DecodeFile(string savePath)
     {
-        if (args.Length < 3)
-            throw new ArgumentException("decode requires <input.bepis> <output.json>");
-
-        string savePath = args[1];
-        string outputPath = args[2];
-
         if (!File.Exists(savePath))
             throw new FileNotFoundException("Input save file not found.", savePath);
 
@@ -25,7 +19,18 @@ static class Decoder
 
         using var fs = File.OpenRead(savePath);
 
-        var saveObject = formatter.Deserialize(fs);
+        return formatter.Deserialize(fs);
+    }
+
+    public static void Run(string[] args)
+    {
+        if (args.Length < 3)
+            throw new ArgumentException("decode requires <input.bepis> <output.json>");
+
+        string savePath = args[1];
+        string outputPath = args[2];
+
+        var saveObject = DecodeFile(savePath);
 
         var options = new JsonSerializerOptions
         {

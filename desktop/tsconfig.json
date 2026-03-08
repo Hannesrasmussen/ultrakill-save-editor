@@ -1,0 +1,14 @@
+{
+	"compilerOptions": {
+		"module": "CommonJS",
+		"moduleResolution": "Node",
+		"target": "ES2022",
+		"esModuleInterop": true,
+		"types": ["vite/client"],
+		"baseUrl": ".",
+		"paths": {
+			"@/*": ["./renderer/*"]
+		}
+	},
+	"include": ["main/**/*", "renderer/**/*", "preload/**/*", "types"]
+}
