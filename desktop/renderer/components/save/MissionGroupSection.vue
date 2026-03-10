@@ -13,6 +13,7 @@ import type {
 
 const props = defineProps<{
 	group: MissionGroupContent;
+	noJargon?: boolean;
 	cardWidthPx: number;
 }>();
 
@@ -54,7 +55,7 @@ const emit = defineEmits<{
 				</p>
 			</div>
 
-			<Badge variant="outline">
+			<Badge v-if="!props.noJargon" variant="outline">
 				{{ props.group.key }}
 			</Badge>
 		</div>
@@ -72,6 +73,7 @@ const emit = defineEmits<{
 				<SaveSecretMissionCard
 					class="w-full"
 					:entry="entry"
+					:no-jargon="props.noJargon"
 					@update:unlocked="
 						(value) =>
 							emit('update:secret-mission-unlocked', {
@@ -103,6 +105,7 @@ const emit = defineEmits<{
 				<SaveMissionCard
 					class="w-full"
 					:entry="entry"
+					:no-jargon="props.noJargon"
 					@update:rank="
 						(value) =>
 							emit('update:rank', {

@@ -9,6 +9,9 @@ export interface DifficultyDefinition {
 	isReleased: boolean;
 }
 
+export const ALL_DIFFICULTIES_ID = -1;
+export const ALL_DIFFICULTIES_LABEL = 'All difficulties';
+
 const ULTRAKILL_DIFFICULTIES: DifficultyDefinition[] = [
 	{
 		id: 0,
@@ -68,6 +71,10 @@ export function getDifficultyById(
 	id: number,
 ): DifficultyDefinition | undefined {
 	return ULTRAKILL_DIFFICULTIES.find((difficulty) => difficulty.id === id);
+}
+
+export function isAllDifficultiesId(id: number): boolean {
+	return id === ALL_DIFFICULTIES_ID;
 }
 
 export function getLowerDifficultyIds(id: number): number[] {

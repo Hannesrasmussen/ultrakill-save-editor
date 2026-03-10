@@ -1,371 +1,194 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from "vue";
 
-import { loadedSave, saveFolderPath } from '@/lib/app-state';
-import { getAllDifficulties } from '@/lib/difficulty-registry';
-import { useMissionEditor } from '@/lib/use-mission-editor';
+import { saveFolderPath } from "@/lib/app-state";
 import {
-	EXTRA_WEAPON_FIELDS,
-	getAllWeaponFamilies,
-	getWeaponIconPath,
-} from '@/lib/weapon-registry';
+  ALL_DIFFICULTIES_ID,
+  ALL_DIFFICULTIES_LABEL,
+  getAllDifficulties,
+} from "@/lib/difficulty-registry";
+import { editorSettings } from "@/lib/editor-settings";
+import {
+  MAIN_SECTION_ITEMS,
+  getMainSectionDescription,
+  type MainSection,
+} from "@/lib/main-sections";
+import { useMissionTabEditor } from "@/lib/use-mission-tab-editor";
+import { useWeaponTabEditor } from "@/lib/use-weapon-tab-editor";
 
-import { Badge } from '@/components';
-import Sidebar from '@/components/layout/Sidebar.vue';
-import SaveMissionsPanel from '@/components/save/SaveMissionsPanel.vue';
-import SaveStatusPanel from '@/components/save/SaveStatusPanel.vue';
-import SaveWeaponsPanel from '@/components/save/SaveWeaponsPanel.vue';
+import { Badge } from "@/components";
+import Sidebar from "@/components/layout/Sidebar.vue";
+import MissionTab from "@/components/tabs/MissionTab.vue";
+import SettingsTab from "@/components/tabs/SettingsTab.vue";
+import WeaponTab from "@/components/tabs/WeaponTab.vue";
 
-type MainSection = 'missions' | 'weapons';
-type GeneralProgress = Record<string, unknown>;
-type PreferencesData = Record<string, unknown>;
-const HIDDEN_WEAPON_EXTRA_FIELDS = new Set([
-	'beam0',
-	'beam1',
-	'beam2',
-	'beam3',
-]);
-const PREFERENCES_KEY_BY_SAVE_FIELD: Record<string, string> = {
-	rev0: 'weapon.rev0',
-	rev1: 'weapon.rev1',
-	rev2: 'weapon.rev2',
-	sho0: 'weapon.sho0',
-	sho1: 'weapon.sho1',
-	sho2: 'weapon.sho2',
-	nai0: 'weapon.nai0',
-	nai1: 'weapon.nai1',
-	nai2: 'weapon.nai2',
-	rai0: 'weapon.rai0',
-	rai1: 'weapon.rai1',
-	rai2: 'weapon.rai2',
-	rock0: 'weapon.rock0',
-	rock1: 'weapon.rock1',
-	rock2: 'weapon.rock2',
-	arm1: 'weapon.arm0',
-	arm2: 'weapon.arm1',
-	arm3: 'weapon.arm2',
-};
-
-const activeSection = ref<MainSection>('missions');
+const activeSection = ref<MainSection>("missions");
+const saveStatusExpanded = ref(true);
 const selectedDifficultyId = ref<number>(2);
-const preferencesData = ref<PreferencesData | null>(null);
-const preferencesLoadToken = ref(0);
 
 const difficulties = getAllDifficulties();
-const weaponFamilies = getAllWeaponFamilies();
 
 const loadedSaveFolder = computed(
-	() => saveFolderPath.value ?? 'No Save folder loaded',
+  () => saveFolderPath.value ?? "No Save folder loaded",
 );
 
 const selectedDifficultyName = computed(() => {
-	return (
-		difficulties.find(
-			(difficulty) => difficulty.id === selectedDifficultyId.value,
-		)?.name ?? 'Unknown'
-	);
+  if (selectedDifficultyId.value === ALL_DIFFICULTIES_ID) {
+    return ALL_DIFFICULTIES_LABEL;
+  }
+
+  return (
+    difficulties.find(
+      (difficulty) => difficulty.id === selectedDifficultyId.value,
+    )?.name ?? "Unknown"
+  );
+});
+
+const sectionTitle = computed(() => {
+  return (
+    MAIN_SECTION_ITEMS.find((section) => section.id === activeSection.value)
+      ?.title ?? "Editor"
+  );
+});
+
+const sectionDescription = computed(() => {
+  return getMainSectionDescription(
+    activeSection.value,
+    editorSettings.value.noJargon,
+  );
 });
 
 const {
-	missionEntries,
-	secretMissionEntries,
-	modifiedEntryCount,
-	hasUnsavedMissionChanges,
-	updateMissionRank,
-	updateMissionStatRank,
-	updateChallengeCompleted,
-	updateMajorAssist,
-	updateSecretFound,
-	fillSecrets,
-	clearSecrets,
-	updateSecretMissionUnlocked,
-	updateSecretMissionCompleted,
-	completeAllMissions,
-	setAllMissionRanks,
-	setAllMissionSecrets,
-	setAllMissionChallenges,
-} = useMissionEditor(selectedDifficultyId);
-
-const generalProgress = computed(() => {
-	if (!loadedSave.value) {
-		return null;
-	}
-
-	return (loadedSave.value.other['generalprogress.bepis'] ??
-		null) as GeneralProgress | null;
+  missionEntries,
+  secretMissionEntries,
+  modifiedEntryCount,
+  hasUnsavedMissionChanges,
+  onMissionRankChanged,
+  onMissionStatRankChanged,
+  onMissionChallengeChanged,
+  onMissionMajorAssistChanged,
+  onMissionSecretChanged,
+  onFillMissionSecrets,
+  onClearMissionSecrets,
+  onSecretMissionUnlockedChanged,
+  onSecretMissionCompletedChanged,
+  onCompleteAllMissions,
+  onSetAllMissionRanks,
+  onSetAllMissionSecrets,
+  onSetAllMissionChallenges,
+} = useMissionTabEditor({
+  selectedDifficultyId,
 });
 
-const points = computed(() => {
-	const value = generalProgress.value?.money;
-	return typeof value === 'number' ? value : 0;
-});
+const {
+  points,
+  weaponFamilyEntries,
+  extraWeaponEntries,
+  onWeaponFlagUpdate,
+  onPointsUpdated,
+  updateEquippedWeapon,
+  updateWeaponAlt,
+  unlockEverything,
+  equipEverything,
+} = useWeaponTabEditor();
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+function onWeaponEquippedChanged(payload: { prefKey: string; value: boolean }) {
+  void updateEquippedWeapon(payload.prefKey, payload.value);
 }
 
-function toBooleanFlag(value: unknown): boolean {
-	if (typeof value === 'boolean') {
-		return value;
-	}
-
-	if (typeof value === 'number') {
-		return value > 0;
-	}
-
-	if (typeof value === 'string') {
-		return value === '1' || value.toLowerCase() === 'true';
-	}
-
-	return false;
+function onWeaponAltChanged(payload: { prefKey: string; value: boolean }) {
+  void updateWeaponAlt(payload.prefKey, payload.value);
 }
 
-function toEquippedFlag(value: unknown): boolean {
-	if (typeof value === 'boolean') {
-		return value;
-	}
-
-	if (typeof value === 'number') {
-		return value > 0;
-	}
-
-	if (typeof value === 'string') {
-		return value === '1' || value.toLowerCase() === 'true';
-	}
-
-	return false;
+function onUnlockAllWeapons() {
+  unlockEverything();
 }
 
-function updateGeneralProgressBooleanFlag(saveField: string, value: boolean) {
-	const currentSave = loadedSave.value;
-	if (!currentSave) {
-		return;
-	}
-
-	const currentGeneral = currentSave.other['generalprogress.bepis'];
-	if (!isRecord(currentGeneral)) {
-		return;
-	}
-
-	const existingValue = currentGeneral[saveField];
-	const nextValue = typeof existingValue === 'boolean' ? value : Number(value);
-
-	loadedSave.value = {
-		...currentSave,
-		other: {
-			...currentSave.other,
-			'generalprogress.bepis': {
-				...currentGeneral,
-				[saveField]: nextValue,
-			},
-		},
-	};
-}
-
-const weaponFamilyEntries = computed(() => {
-	const general = generalProgress.value;
-	const prefs = preferencesData.value;
-
-	if (!general) {
-		return [];
-	}
-
-	return weaponFamilies.map((family) => ({
-		...family,
-		customizationUnlocked: family.customizationField
-			? toBooleanFlag(general[family.customizationField])
-			: null,
-		items: family.items.map((item) => {
-			const equippedPrefKey = PREFERENCES_KEY_BY_SAVE_FIELD[item.saveField];
-
-			return {
-				...item,
-				enabled: toBooleanFlag(general[item.saveField]),
-				equipped:
-					equippedPrefKey && prefs
-						? toEquippedFlag(prefs[equippedPrefKey])
-						: null,
-				equippedPrefKey: equippedPrefKey ?? undefined,
-				iconPath: getWeaponIconPath(item.saveField) ?? undefined,
-			};
-		}),
-	}));
-});
-
-const extraWeaponEntries = computed(() => {
-	const general = generalProgress.value;
-
-	if (!general) {
-		return [];
-	}
-
-	return EXTRA_WEAPON_FIELDS.map((field) => ({
-		...field,
-		value: general[field.saveField] ?? 0,
-	})).filter((field) => !HIDDEN_WEAPON_EXTRA_FIELDS.has(field.saveField));
-});
-
-watch(
-	loadedSave,
-	async (save) => {
-		const token = ++preferencesLoadToken.value;
-
-		if (!save?.directory) {
-			preferencesData.value = null;
-			return;
-		}
-
-		try {
-			const response = await window.api.readPreferences(save.directory);
-			if (token !== preferencesLoadToken.value) {
-				return;
-			}
-			preferencesData.value = response.data ?? {};
-		} catch (error) {
-			if (token !== preferencesLoadToken.value) {
-				return;
-			}
-			console.error(error);
-			preferencesData.value = null;
-		}
-	},
-	{ immediate: true },
-);
-
-async function updateEquippedWeapon(prefKey: string, value: boolean) {
-	const save = loadedSave.value;
-	const currentPrefs = preferencesData.value ?? {};
-
-	if (!save?.directory) {
-		return;
-	}
-
-	const currentValue = currentPrefs[prefKey];
-	const currentNumeric =
-		typeof currentValue === 'number'
-			? currentValue
-			: currentValue === true
-				? 1
-				: 0;
-	const nextNumeric = value ? (currentNumeric > 0 ? currentNumeric : 1) : 0;
-
-	const nextPrefs: PreferencesData = {
-		...currentPrefs,
-		[prefKey]: nextNumeric,
-	};
-
-	preferencesData.value = nextPrefs;
-
-	try {
-		await window.api.writePreferences(save.directory, nextPrefs);
-	} catch (error) {
-		console.error(error);
-		preferencesData.value = currentPrefs;
-	}
+function onEquipAllWeapons() {
+  void equipEverything();
 }
 </script>
 
 <template>
-	<div class="flex h-full bg-background text-foreground">
-		<Sidebar
-			:active-section="activeSection"
-			:has-unsaved-changes="hasUnsavedMissionChanges"
-			:modified-entry-count="modifiedEntryCount"
-			:loaded-save-folder="loadedSaveFolder"
-			@update:active-section="activeSection = $event"
-		/>
+  <div class="flex h-full bg-background text-foreground">
+    <Sidebar
+      :active-section="activeSection"
+      :has-unsaved-changes="hasUnsavedMissionChanges"
+      :modified-entry-count="modifiedEntryCount"
+      :loaded-save-folder="loadedSaveFolder"
+      @update:active-section="activeSection = $event"
+    />
 
-		<section class="flex min-w-0 flex-1 flex-col">
-			<div class="border-b px-6 py-4">
-				<div class="flex flex-wrap items-center justify-between gap-3">
-					<div>
-						<h2 class="text-2xl font-semibold tracking-tight">
-							{{ activeSection === 'missions' ? 'Missions' : 'Weapons' }}
-						</h2>
+    <section class="flex min-w-0 flex-1 flex-col">
+      <div class="border-b px-6 py-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-2xl font-semibold tracking-tight">
+              {{ sectionTitle }}
+            </h2>
 
-						<p class="mt-1 text-sm text-muted-foreground">
-							{{
-								activeSection === 'missions'
-									? 'Each difficulty has its own mission progress profile.'
-									: 'Manage weapon progression flags and customization unlock state.'
-							}}
-						</p>
-					</div>
+            <p class="mt-1 text-sm text-muted-foreground">
+              {{ sectionDescription }}
+            </p>
+          </div>
 
-					<Badge
-						v-if="activeSection === 'missions' && hasUnsavedMissionChanges"
-						variant="secondary"
-					>
-						{{ modifiedEntryCount }} modified
-					</Badge>
-				</div>
-			</div>
+          <Badge
+            v-if="activeSection === 'missions' && hasUnsavedMissionChanges"
+            variant="secondary"
+          >
+            {{ modifiedEntryCount }} modified
+          </Badge>
+        </div>
+      </div>
 
-			<div class="flex-1 overflow-auto p-6">
-				<SaveStatusPanel
-					class="mb-6"
-					:selected-difficulty-name="selectedDifficultyName"
-				/>
+      <div class="flex-1 overflow-auto p-6">
+        <MissionTab
+          v-if="activeSection === 'missions'"
+          :show-save-status="editorSettings.showSaveStatus"
+          :save-status-expanded="saveStatusExpanded"
+          :selected-difficulty-name="selectedDifficultyName"
+          :no-jargon="editorSettings.noJargon"
+          :difficulties="difficulties"
+          :selected-difficulty-id="selectedDifficultyId"
+          :mission-entries="missionEntries"
+          :secret-mission-entries="secretMissionEntries"
+          @update:save-status-expanded="saveStatusExpanded = $event"
+          @update:selected-difficulty-id="selectedDifficultyId = $event"
+          @update:rank="onMissionRankChanged"
+          @update:stat-rank="onMissionStatRankChanged"
+          @update:challenge-completed="onMissionChallengeChanged"
+          @update:major-assist="onMissionMajorAssistChanged"
+          @update:secret-found="onMissionSecretChanged"
+          @fill:secrets="onFillMissionSecrets"
+          @clear:secrets="onClearMissionSecrets"
+          @update:secret-mission-unlocked="onSecretMissionUnlockedChanged"
+          @update:secret-mission-completed="onSecretMissionCompletedChanged"
+          @quick-action:complete-all-missions="onCompleteAllMissions"
+          @quick-action:set-all-ranks="onSetAllMissionRanks"
+          @quick-action:set-all-secrets="onSetAllMissionSecrets"
+          @quick-action:set-all-challenges="onSetAllMissionChallenges"
+        />
 
-				<SaveMissionsPanel
-					v-if="activeSection === 'missions'"
-					:difficulties="difficulties"
-					:selected-difficulty-id="selectedDifficultyId"
-					:mission-entries="missionEntries"
-					:secret-mission-entries="secretMissionEntries"
-					@update:selected-difficulty-id="selectedDifficultyId = $event"
-					@update:rank="
-						(payload) => updateMissionRank(payload.fileName, payload.value)
-					"
-					@update:stat-rank="
-						(payload) =>
-							updateMissionStatRank(
-								payload.fileName,
-								payload.category,
-								payload.rank,
-							)
-					"
-					@update:challenge-completed="
-						(payload) =>
-							updateChallengeCompleted(payload.fileName, payload.value)
-					"
-					@update:major-assist="
-						(payload) => updateMajorAssist(payload.fileName, payload.value)
-					"
-					@update:secret-found="
-						(payload) =>
-							updateSecretFound(payload.fileName, payload.index, payload.value)
-					"
-					@fill:secrets="(payload) => fillSecrets(payload.fileName)"
-					@clear:secrets="(payload) => clearSecrets(payload.fileName)"
-					@update:secret-mission-unlocked="
-						(payload) =>
-							updateSecretMissionUnlocked(payload.secretIndex, payload.value)
-					"
-					@update:secret-mission-completed="
-						(payload) =>
-							updateSecretMissionCompleted(payload.secretIndex, payload.value)
-					"
-					@quick-action:complete-all-missions="completeAllMissions"
-					@quick-action:set-all-ranks="setAllMissionRanks($event)"
-					@quick-action:set-all-secrets="setAllMissionSecrets($event)"
-					@quick-action:set-all-challenges="setAllMissionChallenges($event)"
-				/>
+        <WeaponTab
+          v-else-if="activeSection === 'weapons'"
+          :show-save-status="editorSettings.showSaveStatus"
+          :save-status-expanded="saveStatusExpanded"
+          :selected-difficulty-name="selectedDifficultyName"
+          :no-jargon="editorSettings.noJargon"
+          :points="points"
+          :weapon-family-entries="weaponFamilyEntries"
+          :extra-weapon-entries="extraWeaponEntries"
+          @update:save-status-expanded="saveStatusExpanded = $event"
+          @update:points="onPointsUpdated"
+          @update:weapon-flag="onWeaponFlagUpdate"
+          @update:item-equipped="onWeaponEquippedChanged"
+          @update:item-alt="onWeaponAltChanged"
+          @quick-action:unlock-all="onUnlockAllWeapons"
+          @quick-action:equip-all="onEquipAllWeapons"
+        />
 
-				<SaveWeaponsPanel
-					v-else
-					:points="points"
-					:weapon-family-entries="weaponFamilyEntries"
-					:extra-weapon-entries="extraWeaponEntries"
-					@update:weapon-flag="
-						(payload) =>
-							updateGeneralProgressBooleanFlag(payload.saveField, payload.value)
-					"
-					@update:item-equipped="
-						(payload) => updateEquippedWeapon(payload.prefKey, payload.value)
-					"
-				/>
-			</div>
-		</section>
-	</div>
+        <SettingsTab v-else />
+      </div>
+    </section>
+  </div>
 </template>

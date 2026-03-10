@@ -36,6 +36,7 @@ import {
 
 const props = defineProps<{
 	entry: MissionEntry;
+	noJargon?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -263,7 +264,11 @@ function onRankBadgeClick() {
 								{{ missionName }}
 							</CardTitle>
 
-							<p class="truncate text-xs text-muted-foreground">
+							<p v-if="props.noJargon" class="truncate text-xs text-muted-foreground">
+								Mission save entry
+							</p>
+
+							<p v-else class="truncate text-xs text-muted-foreground">
 								{{ entry.fileName }}
 							</p>
 
@@ -279,7 +284,15 @@ function onRankBadgeClick() {
 									<span class="inline-flex items-center gap-1">
 										<FileCheck v-if="entry.existsInSave" class="h-3.5 w-3.5" />
 										<FileWarning v-else class="h-3.5 w-3.5" />
-										{{ entry.existsInSave ? 'Present' : 'Missing file' }}
+										{{
+											entry.existsInSave
+												? props.noJargon
+													? 'In save files'
+													: 'Present'
+												: props.noJargon
+													? 'Missing save file'
+													: 'Missing file'
+										}}
 									</span>
 								</Badge>
 
@@ -343,12 +356,13 @@ function onRankBadgeClick() {
 						class="flex min-w-0 gap-2 overflow-x-auto pb-1 pr-1 text-xs text-muted-foreground"
 					>
 						<span
+							v-if="!props.noJargon"
 							class="shrink-0 whitespace-nowrap rounded-md border px-2 py-1"
 						>
 							Mission ID: {{ missionId ?? '-' }}
 						</span>
 
-						<TooltipProvider>
+						<TooltipProvider v-if="!props.noJargon">
 							<Tooltip>
 								<TooltipTrigger>
 									<span
@@ -396,7 +410,15 @@ function onRankBadgeClick() {
 					>
 						<ChevronDown v-if="isExpanded" class="h-4 w-4" />
 						<ChevronRight v-else class="h-4 w-4" />
-						{{ isExpanded ? 'Hide editor' : 'Open editor' }}
+						{{
+							props.noJargon
+								? isExpanded
+									? 'Hide details'
+									: 'Show details'
+								: isExpanded
+									? 'Hide editor'
+									: 'Open editor'
+						}}
 					</Button>
 				</div>
 			</div>
@@ -405,6 +427,7 @@ function onRankBadgeClick() {
 		<CardContent v-if="isExpanded" class="space-y-5 border-t pt-5">
 			<MissionDetailsPanel
 				:entry="entry"
+				:no-jargon="props.noJargon"
 				@update:challenge-completed="emit('update:challenge-completed', $event)"
 				@update:stat-rank="emit('update:stat-rank', $event)"
 				@update:major-assist="emit('update:major-assist', $event)"

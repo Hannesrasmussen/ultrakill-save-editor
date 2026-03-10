@@ -29,6 +29,7 @@ import {
 const props = defineProps<{
 	difficulties: DifficultyDefinition[];
 	selectedDifficultyId: number;
+	noJargon?: boolean;
 	missionEntries: MissionEntry[];
 	secretMissionEntries: SecretMissionEntry[];
 }>();
@@ -128,6 +129,7 @@ function updateDifficulty(value: number) {
 		<MissionPanelControls
 			:difficulties="difficulties"
 			:selected-difficulty-id="selectedDifficultyId"
+			:no-jargon="props.noJargon"
 			:search-query="searchQuery"
 			:type-filter="typeFilter"
 			:presence-filter="presenceFilter"
@@ -155,6 +157,7 @@ function updateDifficulty(value: number) {
 				v-for="group in groupedContent"
 				:key="group.key"
 				:group="group"
+				:no-jargon="props.noJargon"
 				:card-width-px="CARD_WIDTH_PX"
 				@update:rank="$emit('update:rank', $event)"
 				@update:stat-rank="$emit('update:stat-rank', $event)"
@@ -177,7 +180,11 @@ function updateDifficulty(value: number) {
 		<Card v-else>
 			<CardContent class="py-6">
 				<p class="text-sm text-muted-foreground">
-					No missions match the current search and filter settings.
+					{{
+						props.noJargon
+							? 'No missions match your current search and filters.'
+							: 'No missions match the current search and filter settings.'
+					}}
 				</p>
 			</CardContent>
 		</Card>

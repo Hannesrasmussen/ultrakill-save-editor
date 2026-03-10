@@ -19,6 +19,7 @@ import {
 	type SecretMissionDefinition,
 	type UltrakillMissionDefinition,
 } from '@/lib/mission-registry';
+import { ALL_DIFFICULTIES_ID } from '@/lib/difficulty-registry';
 import type { QuickMissionRank } from '@/components/save/mission-panel-types';
 import type {
 	DecodedMissionProgress,
@@ -119,9 +120,75 @@ export function useMissionEditor(selectedDifficultyId: { value: number }) {
 		return normalized;
 	}
 
+	function isValidDifficultySlot(value: number): boolean {
+		return value >= 0 && value < DIFFICULTY_SLOT_COUNT;
+	}
+
+	function getTargetDifficultySlots(): number[] {
+		if (selectedDifficultyId.value === ALL_DIFFICULTIES_ID) {
+			return Array.from({ length: DIFFICULTY_SLOT_COUNT }, (_, index) => index);
+		}
+
+		return isValidDifficultySlot(selectedDifficultyId.value)
+			? [selectedDifficultyId.value]
+			: [0];
+	}
+
+	function areMissionStatsEqual(
+		left: MissionStat | null,
+		right: MissionStat | null,
+	): boolean {
+		if (left === right) {
+			return true;
+		}
+
+		if (!left || !right) {
+			return false;
+		}
+
+		return (
+			left.time === right.time &&
+			left.kills === right.kills &&
+			left.style === right.style
+		);
+	}
+
+	function getDisplayedRank(data: DecodedMissionProgress): number | null {
+		const slots = getTargetDifficultySlots();
+		const ranks = normalizeRanks(data.ranks);
+		const firstValue = ranks[slots[0]] ?? -1;
+
+		return slots.every((slot) => (ranks[slot] ?? -1) === firstValue)
+			? firstValue
+			: null;
+	}
+
+	function getDisplayedStats(data: DecodedMissionProgress): MissionStat | null {
+		const slots = getTargetDifficultySlots();
+		const stats = normalizeStats(data.stats);
+		const firstValue = stats[slots[0]] ?? null;
+
+		return slots.every((slot) =>
+			areMissionStatsEqual(stats[slot] ?? null, firstValue),
+		)
+			? firstValue
+			: null;
+	}
+
+	function getDisplayedMajorAssist(data: DecodedMissionProgress): boolean {
+		const slots = getTargetDifficultySlots();
+		const majorAssists = normalizeMajorAssists(data.majorAssists);
+		const firstValue = Boolean(majorAssists[slots[0]]);
+
+		return slots.every((slot) => Boolean(majorAssists[slot]) === firstValue)
+			? firstValue
+			: false;
+	}
+
 	function readDifficultyNumericField(
 		source: DecodedMissionProgress,
 		keys: string[],
+		difficultyIndex: number,
 	): number {
 		const record = source as Record<string, unknown>;
 
@@ -133,7 +200,7 @@ export function useMissionEditor(selectedDifficultyId: { value: number }) {
 			}
 
 			if (Array.isArray(value)) {
-				const slot = value[selectedDifficultyId.value];
+				const slot = value[difficultyIndex];
 				if (typeof slot === 'number' && Number.isFinite(slot)) {
 					return Math.max(0, Math.floor(slot));
 				}
@@ -146,6 +213,7 @@ export function useMissionEditor(selectedDifficultyId: { value: number }) {
 	function readDifficultyBooleanField(
 		source: DecodedMissionProgress,
 		keys: string[],
+		difficultyIndex: number,
 	): boolean {
 		const record = source as Record<string, unknown>;
 
@@ -161,7 +229,7 @@ export function useMissionEditor(selectedDifficultyId: { value: number }) {
 			}
 
 			if (Array.isArray(value)) {
-				const slot = value[selectedDifficultyId.value];
+				const slot = value[difficultyIndex];
 
 				if (typeof slot === 'boolean') {
 					return slot;
@@ -176,23 +244,29 @@ export function useMissionEditor(selectedDifficultyId: { value: number }) {
 		return false;
 	}
 
-	function getCheckpointRestartPenalty(source: DecodedMissionProgress): number {
+	function getCheckpointRestartPenalty(
+		source: DecodedMissionProgress,
+		difficultyIndex: number,
+	): number {
 		return readDifficultyNumericField(source, [
 			'checkpointRestarts',
 			'checkpointRestartCount',
 			'restarts',
 			'restartCount',
-		]);
+		], difficultyIndex);
 	}
 
-	function hasCheatsEnabled(source: DecodedMissionProgress): boolean {
+	function hasCheatsEnabled(
+		source: DecodedMissionProgress,
+		difficultyIndex: number,
+	): boolean {
 		return readDifficultyBooleanField(source, [
 			'cheats',
 			'cheated',
 			'cheatsUsed',
 			'usedCheats',
 			'isCheated',
-		]);
+		], difficultyIndex);
 	}
 
 	function applyMissionRank(
@@ -200,6 +274,7 @@ export function useMissionEditor(selectedDifficultyId: { value: number }) {
 		fileName: string,
 		rank: QuickMissionRank,
 	): DecodedMissionProgress {
+		const targetSlots = getTargetDifficultySlots();
 		const nextData: DecodedMissionProgress = {
 			...missionData,
 		};
@@ -213,24 +288,31 @@ export function useMissionEditor(selectedDifficultyId: { value: number }) {
 
 		if (rankStats) {
 			const stats = normalizeStats(missionData.stats);
-			stats[selectedDifficultyId.value] = { ...rankStats };
+			for (const slot of targetSlots) {
+				stats[slot] = { ...rankStats };
+			}
 			nextData.stats = stats;
 		}
 
 		if (rank === 'P') {
 			const majorAssists = normalizeMajorAssists(missionData.majorAssists);
-			majorAssists[selectedDifficultyId.value] = false;
+			for (const slot of targetSlots) {
+				majorAssists[slot] = false;
+			}
 			nextData.majorAssists = majorAssists;
 		}
 
 		const ranks = normalizeRanks(missionData.ranks);
 
 		if (mission?.isKnown) {
-			const derived = getMissionRankFromStats(mission.code, nextData);
-			ranks[selectedDifficultyId.value] =
-				derived === null ? -1 : RANK_VALUE_BY_FINAL_LABEL[derived];
+			for (const slot of targetSlots) {
+				const derived = getMissionRankFromStats(mission.code, nextData, slot);
+				ranks[slot] = derived === null ? -1 : RANK_VALUE_BY_FINAL_LABEL[derived];
+			}
 		} else {
-			ranks[selectedDifficultyId.value] = RANK_VALUE_BY_QUICK_LABEL[rank];
+			for (const slot of targetSlots) {
+				ranks[slot] = RANK_VALUE_BY_QUICK_LABEL[rank];
+			}
 		}
 
 		nextData.ranks = ranks;
@@ -241,8 +323,9 @@ export function useMissionEditor(selectedDifficultyId: { value: number }) {
 	function getMissionRankFromStats(
 		code: string,
 		missionData: DecodedMissionProgress,
+		difficultyIndex: number,
 	): MissionFinalRankLabel | null {
-		const stats = missionData.stats?.[selectedDifficultyId.value] ?? null;
+		const stats = missionData.stats?.[difficultyIndex] ?? null;
 
 		if (!stats) {
 			return null;
@@ -263,10 +346,13 @@ export function useMissionEditor(selectedDifficultyId: { value: number }) {
 				style: styleRank,
 			},
 			{
-				checkpointRestarts: getCheckpointRestartPenalty(missionData),
+				checkpointRestarts: getCheckpointRestartPenalty(
+					missionData,
+					difficultyIndex,
+				),
 				majorAssistsEnabled:
-					missionData.majorAssists?.[selectedDifficultyId.value] ?? false,
-				cheatsEnabled: hasCheatsEnabled(missionData),
+					missionData.majorAssists?.[difficultyIndex] ?? false,
+				cheatsEnabled: hasCheatsEnabled(missionData, difficultyIndex),
 			},
 		);
 	}
@@ -429,10 +515,9 @@ export function useMissionEditor(selectedDifficultyId: { value: number }) {
 				originalMissionData.value[mission.fileName] ??
 				createDefaultMissionProgress(mission.id);
 
-			const rank = data.ranks?.[selectedDifficultyId.value] ?? null;
-			const stats = data.stats?.[selectedDifficultyId.value] ?? null;
-			const majorAssist =
-				data.majorAssists?.[selectedDifficultyId.value] ?? false;
+			const rank = getDisplayedRank(data);
+			const stats = getDisplayedStats(data);
+			const majorAssist = getDisplayedMajorAssist(data);
 			const secretsFoundCount = data.secretsFound?.filter(Boolean).length ?? 0;
 			const secretsAmount = data.secretsAmount ?? 0;
 			const challengeCompleted = data.challenge ?? false;
@@ -464,10 +549,9 @@ export function useMissionEditor(selectedDifficultyId: { value: number }) {
 				}
 
 				const originalData = originalMissionData.value[fileName] ?? data;
-				const rank = data.ranks?.[selectedDifficultyId.value] ?? null;
-				const stats = data.stats?.[selectedDifficultyId.value] ?? null;
-				const majorAssist =
-					data.majorAssists?.[selectedDifficultyId.value] ?? false;
+				const rank = getDisplayedRank(data);
+				const stats = getDisplayedStats(data);
+				const majorAssist = getDisplayedMajorAssist(data);
 				const secretsFoundCount =
 					data.secretsFound?.filter(Boolean).length ?? 0;
 				const secretsAmount = data.secretsAmount ?? 0;
@@ -559,11 +643,14 @@ export function useMissionEditor(selectedDifficultyId: { value: number }) {
 			return;
 		}
 
+		const targetSlots = getTargetDifficultySlots();
 		const majorAssists = current.majorAssists
 			? [...current.majorAssists]
 			: [false, false, false, false, false, false];
 
-		majorAssists[selectedDifficultyId.value] = value;
+		for (const slot of targetSlots) {
+			majorAssists[slot] = value;
+		}
 
 		const nextData: DecodedMissionProgress = {
 			...current,
@@ -573,9 +660,10 @@ export function useMissionEditor(selectedDifficultyId: { value: number }) {
 		const mission = getMissionByFileName(fileName);
 		if (mission?.isKnown) {
 			const ranks = normalizeRanks(nextData.ranks);
-			const derived = getMissionRankFromStats(mission.code, nextData);
-			ranks[selectedDifficultyId.value] =
-				derived === null ? -1 : RANK_VALUE_BY_FINAL_LABEL[derived];
+			for (const slot of targetSlots) {
+				const derived = getMissionRankFromStats(mission.code, nextData, slot);
+				ranks[slot] = derived === null ? -1 : RANK_VALUE_BY_FINAL_LABEL[derived];
+			}
 			nextData.ranks = ranks;
 		}
 
@@ -696,14 +784,17 @@ export function useMissionEditor(selectedDifficultyId: { value: number }) {
 			return;
 		}
 
+		const targetSlots = getTargetDifficultySlots();
 		const stats = normalizeStats(current.stats);
-		const currentStat = stats[selectedDifficultyId.value] ?? {};
-		const nextStat: MissionStat = {
-			...currentStat,
-			[category]: statValue,
-		};
+		for (const slot of targetSlots) {
+			const currentStat = stats[slot] ?? {};
+			const nextStat: MissionStat = {
+				...currentStat,
+				[category]: statValue,
+			};
 
-		stats[selectedDifficultyId.value] = nextStat;
+			stats[slot] = nextStat;
+		}
 
 		const nextRanks = normalizeRanks(current.ranks);
 		const nextData: DecodedMissionProgress = {
@@ -712,15 +803,23 @@ export function useMissionEditor(selectedDifficultyId: { value: number }) {
 			ranks: nextRanks,
 		};
 
-		const nextMissionRank = getMissionRankFromStats(mission.code, nextData);
-		nextRanks[selectedDifficultyId.value] =
-			nextMissionRank === null
-				? -1
-				: RANK_VALUE_BY_FINAL_LABEL[nextMissionRank];
+		const majorAssists = normalizeMajorAssists(current.majorAssists);
+		let touchedMajorAssists = false;
 
-		if (nextMissionRank === 'P') {
-			const majorAssists = normalizeMajorAssists(current.majorAssists);
-			majorAssists[selectedDifficultyId.value] = false;
+		for (const slot of targetSlots) {
+			const nextMissionRank = getMissionRankFromStats(mission.code, nextData, slot);
+			nextRanks[slot] =
+				nextMissionRank === null
+					? -1
+					: RANK_VALUE_BY_FINAL_LABEL[nextMissionRank];
+
+			if (nextMissionRank === 'P') {
+				majorAssists[slot] = false;
+				touchedMajorAssists = true;
+			}
+		}
+
+		if (touchedMajorAssists) {
 			nextData.majorAssists = majorAssists;
 		}
 

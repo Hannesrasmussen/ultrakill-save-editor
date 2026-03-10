@@ -14,6 +14,7 @@ import { KeyRound, Lock, CheckCircle2 } from 'lucide-vue-next';
 
 const props = defineProps<{
 	entry: SecretMissionEntry;
+	noJargon?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -88,7 +89,11 @@ function onSecretMissionScreenshotError() {
 							{{ entry.name }}
 						</CardTitle>
 
-						<p class="text-xs text-muted-foreground">Secret mission state</p>
+						<p class="text-xs text-muted-foreground">
+							{{
+								props.noJargon ? 'Secret mission progress' : 'Secret mission state'
+							}}
+						</p>
 
 						<div class="flex gap-2 overflow-x-auto pb-1 pr-1">
 							<Badge variant="outline" class="shrink-0 whitespace-nowrap">
@@ -119,7 +124,11 @@ function onSecretMissionScreenshotError() {
 							</div>
 
 							<p class="mt-1 text-xs text-muted-foreground">
-								Whether the mission is available.
+								{{
+									props.noJargon
+										? 'Enable this mission in-game.'
+										: 'Whether the mission is available.'
+								}}
 							</p>
 						</div>
 
@@ -139,7 +148,11 @@ function onSecretMissionScreenshotError() {
 							</div>
 
 							<p class="mt-1 text-xs text-muted-foreground">
-								Whether the mission has been completed.
+								{{
+									props.noJargon
+										? 'Mark this mission as cleared.'
+										: 'Whether the mission has been completed.'
+								}}
 							</p>
 						</div>
 
@@ -151,7 +164,10 @@ function onSecretMissionScreenshotError() {
 				</div>
 			</div>
 
-			<div class="flex flex-wrap gap-2 text-xs text-muted-foreground">
+			<div
+				v-if="!props.noJargon"
+				class="flex flex-wrap gap-2 text-xs text-muted-foreground"
+			>
 				<span class="rounded-md border px-2 py-1">
 					Save value: {{ entry.stateValue }}
 				</span>

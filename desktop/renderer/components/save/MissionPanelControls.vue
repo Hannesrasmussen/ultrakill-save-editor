@@ -24,7 +24,11 @@ import {
 	SlidersHorizontal,
 	Zap,
 } from 'lucide-vue-next';
-import type { DifficultyDefinition } from '@/lib/difficulty-registry';
+import {
+	ALL_DIFFICULTIES_ID,
+	ALL_DIFFICULTIES_LABEL,
+	type DifficultyDefinition,
+} from '@/lib/difficulty-registry';
 import type {
 	MissionTypeFilter,
 	PresenceFilter,
@@ -35,6 +39,7 @@ import { getQuickRankButtonClass } from '@/components/save/rank-button-styles';
 const props = defineProps<{
 	difficulties: DifficultyDefinition[];
 	selectedDifficultyId: number;
+	noJargon?: boolean;
 	searchQuery: string;
 	typeFilter: MissionTypeFilter;
 	presenceFilter: PresenceFilter;
@@ -55,6 +60,10 @@ const emit = defineEmits<{
 }>();
 
 const selectedDifficultyName = computed(() => {
+	if (props.selectedDifficultyId === ALL_DIFFICULTIES_ID) {
+		return ALL_DIFFICULTIES_LABEL;
+	}
+
 	return (
 		props.difficulties.find(
 			(difficulty) => difficulty.id === props.selectedDifficultyId,
@@ -102,8 +111,11 @@ function setAllSecrets(value: boolean) {
 					<div>
 						<CardTitle>Missions</CardTitle>
 						<CardDescription class="mt-1 text-sm">
-							Browse known missions, search quickly, and edit progress even when
-							a local .bepis file does not exist yet.
+							{{
+								props.noJargon
+									? 'Browse missions, search quickly, and edit progress even if the mission file has not been created yet.'
+									: 'Browse known missions, search quickly, and edit progress even when a local .bepis file does not exist yet.'
+							}}
 						</CardDescription>
 					</div>
 
@@ -113,7 +125,11 @@ function setAllSecrets(value: boolean) {
 						</Badge>
 
 						<Badge variant="outline">
-							{{ props.missingMissionCount }} missing files
+							{{
+								props.noJargon
+									? `${props.missingMissionCount} not in save files`
+									: `${props.missingMissionCount} missing files`
+							}}
 						</Badge>
 
 						<Badge v-if="props.modifiedMissionCount" variant="secondary">
@@ -133,7 +149,9 @@ function setAllSecrets(value: boolean) {
 						<div class="min-w-0">
 							<div class="flex flex-wrap items-center gap-2">
 								<ShieldAlert class="h-4 w-4 text-amber-600" />
-								<p class="font-medium">Difficulty Scope</p>
+								<p class="font-medium">
+									{{ props.noJargon ? 'Difficulty' : 'Difficulty Scope' }}
+								</p>
 								<Badge variant="outline" class="border-amber-500/50">
 									<Layers class="mr-1 h-3.5 w-3.5" />
 									{{ selectedDifficultyName }}
@@ -141,12 +159,18 @@ function setAllSecrets(value: boolean) {
 							</div>
 
 							<p class="mt-2 text-muted-foreground">
-								Mission completion is tracked separately per difficulty. Mission
-								edits and Quick Actions apply only to
-								<span class="font-medium text-foreground">{{
-									selectedDifficultyName
-								}}</span
-								>.
+								<span v-if="props.selectedDifficultyId === ALL_DIFFICULTIES_ID">
+									Mission edits and Quick Actions in this view apply to every
+									difficulty at once.
+								</span>
+								<span v-else>
+									Mission progress is tracked separately per difficulty. Mission
+									edits and Quick Actions apply only to
+									<span class="font-medium text-foreground">{{
+										selectedDifficultyName
+									}}</span
+									>.
+								</span>
 							</p>
 						</div>
 
@@ -166,6 +190,10 @@ function setAllSecrets(value: boolean) {
 								</SelectTrigger>
 
 								<SelectContent>
+									<SelectItem :value="String(ALL_DIFFICULTIES_ID)">
+										{{ ALL_DIFFICULTIES_LABEL }}
+									</SelectItem>
+
 									<SelectItem
 										v-for="difficulty in props.difficulties"
 										:key="difficulty.id"
@@ -189,8 +217,11 @@ function setAllSecrets(value: boolean) {
 
 					<div>
 						<p class="mb-2 text-xs text-muted-foreground">
-							Bulk completion sets secrets and challenges, but does not change
-							mission rank.
+							{{
+								props.noJargon
+									? 'This fills secrets and challenges, but does not change ranks.'
+									: 'Bulk completion sets secrets and challenges, but does not change mission rank.'
+							}}
 						</p>
 
 						<div class="flex flex-wrap gap-2">
@@ -290,7 +321,11 @@ function setAllSecrets(value: boolean) {
 							class="h-10 border-border/80 bg-background/70 pl-9"
 							:model-value="props.searchQuery"
 							type="text"
-							placeholder="Search by mission code, name, group, or file..."
+							:placeholder="
+								props.noJargon
+									? 'Search by mission code, name, or group...'
+									: 'Search by mission code, name, group, or file...'
+							"
 							@update:model-value="emit('update:search-query', String($event))"
 						/>
 					</div>
@@ -384,7 +419,7 @@ function setAllSecrets(value: boolean) {
 								"
 								@click="onPresenceFilterChange('present')"
 							>
-								File present
+								{{ props.noJargon ? 'In save files' : 'File present' }}
 							</Button>
 
 							<Button
@@ -394,7 +429,7 @@ function setAllSecrets(value: boolean) {
 								"
 								@click="onPresenceFilterChange('missing')"
 							>
-								File missing
+								{{ props.noJargon ? 'Not in save files' : 'File missing' }}
 							</Button>
 						</div>
 					</div>

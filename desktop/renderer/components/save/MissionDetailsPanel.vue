@@ -29,6 +29,7 @@ import {
 
 const props = defineProps<{
 	entry: MissionEntry;
+	noJargon?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -129,8 +130,11 @@ function onStatRankSelect(
 
 <template>
 	<p v-if="!props.entry.existsInSave" class="text-sm text-muted-foreground">
-		This mission does not currently have a local .bepis file. The editor is
-		showing a default scaffold so it can be created on export.
+		{{
+			props.noJargon
+				? 'This mission has no save file yet. These values will be created when you save/export.'
+				: 'This mission does not currently have a local .bepis file. The editor is showing a default scaffold so it can be created on export.'
+		}}
 	</p>
 
 	<div class="grid gap-4 xl:grid-cols-2">
@@ -163,7 +167,11 @@ function onStatRankSelect(
 					</div>
 
 					<p class="mt-1 text-sm text-muted-foreground">
-						Toggle the selected difficulty's major assist flag.
+						{{
+							props.noJargon
+								? 'Turn major assists on or off for this difficulty.'
+								: "Toggle the selected difficulty's major assist flag."
+						}}
 					</p>
 				</div>
 
@@ -182,11 +190,17 @@ function onStatRankSelect(
 			<div>
 				<div class="flex items-center gap-2">
 					<KeyRound class="h-4 w-4 text-muted-foreground" />
-					<h3 class="text-sm font-semibold">Secret Flags</h3>
+					<h3 class="text-sm font-semibold">
+						{{ props.noJargon ? 'Secrets' : 'Secret Flags' }}
+					</h3>
 				</div>
 
 				<p class="mt-1 text-sm text-muted-foreground">
-					Toggle individual secret completion flags for this mission.
+					{{
+						props.noJargon
+							? 'Mark each secret as found or not found for this mission.'
+							: 'Toggle individual secret completion flags for this mission.'
+					}}
 				</p>
 			</div>
 
@@ -251,9 +265,11 @@ function onStatRankSelect(
 				</TooltipTrigger>
 				<TooltipContent class="max-w-sm">
 					<p class="text-xs leading-relaxed max-w-55">
-						Raw stat editing is intentionally restricted. This editor applies
-						rank presets to keep mission records consistent and avoid enabling
-						fake speedrun/perfomance values. Sorry for the inconvenience.
+						{{
+							props.noJargon
+								? 'You can set rank presets, but direct number editing is locked to keep save data consistent.'
+								: 'Raw stat editing is intentionally restricted. This editor applies rank presets to keep mission records consistent and avoid enabling fake speedrun/perfomance values. Sorry for the inconvenience.'
+						}}
 					</p>
 				</TooltipContent>
 			</Tooltip>
@@ -338,12 +354,18 @@ function onStatRankSelect(
 	</div>
 
 	<p class="text-xs text-muted-foreground">
-		Mission rank is derived from Time/Kills/Style points minus checkpoint
-		restarts. <span class="font-medium text-foreground">P</span> requires a full
-		15-point score with Major Assists disabled.
+		{{
+			props.noJargon
+				? 'Rank is based on Time, Kills, and Style. P rank needs perfect score with Major Assists off.'
+				: 'Mission rank is derived from Time/Kills/Style points minus checkpoint restarts. P requires a full 15-point score with Major Assists disabled.'
+		}}
 	</p>
 
 	<p v-if="!canEditStatRanks" class="text-xs text-muted-foreground">
-		Stat rank presets are unavailable for unknown missions.
+		{{
+			props.noJargon
+				? 'Rank presets are not available for this unknown mission.'
+				: 'Stat rank presets are unavailable for unknown missions.'
+		}}
 	</p>
 </template>

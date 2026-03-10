@@ -1,64 +1,83 @@
-import { spawn } from 'node:child_process';
-import path from 'node:path';
+import { spawn } from "node:child_process";
+import path from "node:path";
 
 const cliExePath = path.resolve(
-	process.cwd(),
-	'../cli/src/bin/Debug/net8.0/cli.exe',
+  process.cwd(),
+  "../cli/src/bin/Debug/net8.0/cli.exe",
 );
 
-export function runCli(command: string, args: string[] = []) {
-	return new Promise((resolve, reject) => {
-		const cli = spawn(cliExePath, [command, ...args]);
+export interface CliOutputChunk {
+  stream: "stdout" | "stderr";
+  text: string;
+}
 
-		let stdout = '';
-		let stderr = '';
+export function runCli(
+  command: string,
+  args: string[] = [],
+  onOutput?: (chunk: CliOutputChunk) => void,
+) {
+  return new Promise((resolve, reject) => {
+    const cli = spawn(cliExePath, [command, ...args]);
 
-		cli.stdout.on('data', (data) => {
-			stdout += data.toString();
-		});
+    let stdout = "";
+    let stderr = "";
 
-		cli.stderr.on('data', (data) => {
-			stderr += data.toString();
-		});
+    cli.stdout.on("data", (data) => {
+      const text = data.toString();
+      stdout += text;
+      onOutput?.({
+        stream: "stdout",
+        text,
+      });
+    });
 
-		cli.on('error', (error) => {
-			reject(error);
-		});
+    cli.stderr.on("data", (data) => {
+      const text = data.toString();
+      stderr += text;
+      onOutput?.({
+        stream: "stderr",
+        text,
+      });
+    });
 
-		cli.on('close', (code) => {
-			const trimmedStdout = stdout.trim();
-			const trimmedStderr = stderr.trim();
+    cli.on("error", (error) => {
+      reject(error);
+    });
 
-			if (code !== 0) {
-				reject(
-					new Error(
-						[
-							`CLI exited with code ${code}.`,
-							trimmedStderr && `stderr:\n${trimmedStderr}`,
-							trimmedStdout && `stdout:\n${trimmedStdout}`,
-						]
-							.filter(Boolean)
-							.join('\n\n'),
-					),
-				);
-				return;
-			}
+    cli.on("close", (code) => {
+      const trimmedStdout = stdout.trim();
+      const trimmedStderr = stderr.trim();
 
-			try {
-				resolve(JSON.parse(trimmedStdout));
-			} catch {
-				reject(
-					new Error(
-						[
-							'CLI returned invalid JSON.',
-							trimmedStderr && `stderr:\n${trimmedStderr}`,
-							trimmedStdout && `stdout:\n${trimmedStdout}`,
-						]
-							.filter(Boolean)
-							.join('\n\n'),
-					),
-				);
-			}
-		});
-	});
+      if (code !== 0) {
+        reject(
+          new Error(
+            [
+              `CLI exited with code ${code}.`,
+              trimmedStderr && `stderr:\n${trimmedStderr}`,
+              trimmedStdout && `stdout:\n${trimmedStdout}`,
+            ]
+              .filter(Boolean)
+              .join("\n\n"),
+          ),
+        );
+        return;
+      }
+
+      try {
+        resolve(JSON.parse(trimmedStdout));
+      } catch {
+        reject(
+          new Error(
+            [
+              "CLI returned invalid JSON.",
+              trimmedStderr && `stderr:\n${trimmedStderr}`,
+              trimmedStdout && `stdout:\n${trimmedStdout}`,
+            ]
+              .filter(Boolean)
+              .join("\n\n"),
+          ),
+        );
+      }
+    });
+  });
 }
