@@ -13,6 +13,8 @@ const PREFERENCES_WRITE_MAX_RETRIES = 8;
 const PREFERENCES_WRITE_BASE_DELAY_MS = 50;
 const UPDATE_CHECK_INTERVAL_MS = 1000 * 60 * 30;
 const UPDATE_REQUEST_TIMEOUT_MS = 10000;
+const SLOT_DIRECTORY_PATTERN = /^Slot\d+$/i;
+const MISSION_PROGRESS_FILE_PATTERN = /^lvl(\d+)progress\.bepis$/i;
 const RELEASES_PAGE_URL =
   "https://github.com/Hannesrasmussen/ultrakill-save-editor/releases/latest";
 const LATEST_RELEASE_API_URL =
@@ -357,10 +359,193 @@ async function isProcessRunning(imageName: string): Promise<boolean> {
   }
 }
 
+interface SaveSlotScanResult {
+  slot: string;
+  directory: string;
+  levels: number[];
+  special: number[];
+  other: string[];
+}
+
+interface SaveScanResult {
+  savesDirectory: string | null;
+  slot: string | null;
+  directory: string | null;
+  levels: number[];
+  special: number[];
+  other: string[];
+  slots: SaveSlotScanResult[];
+}
+
+function normalizePathForComparison(filePath: string): string {
+  return path
+    .resolve(filePath)
+    .replace(/[\\/]+$/, "")
+    .toLowerCase();
+}
+
+function parseSlotNumber(slotName: string): number | null {
+  const match = slotName.match(/^Slot(\d+)$/i);
+  if (!match) {
+    return null;
+  }
+
+  const parsed = Number.parseInt(match[1], 10);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function sortSlotDirectories(slotDirectories: string[]): string[] {
+  return slotDirectories.sort((left, right) => {
+    const leftName = path.basename(left);
+    const rightName = path.basename(right);
+    const leftNumber = parseSlotNumber(leftName);
+    const rightNumber = parseSlotNumber(rightName);
+
+    if (
+      leftNumber !== null &&
+      rightNumber !== null &&
+      leftNumber !== rightNumber
+    ) {
+      return leftNumber - rightNumber;
+    }
+
+    return left.localeCompare(right, "en", { sensitivity: "base" });
+  });
+}
+
+async function scanSlotDirectory(
+  slotDirectory: string,
+): Promise<SaveSlotScanResult> {
+  const entries = await fs.readdir(slotDirectory, { withFileTypes: true });
+  const allBepisFiles = entries
+    .filter(
+      (entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".bepis"),
+    )
+    .map((entry) => entry.name);
+
+  const levels: number[] = [];
+  const special: number[] = [];
+  const other: string[] = [];
+
+  for (const fileName of allBepisFiles) {
+    const levelMatch = fileName.match(MISSION_PROGRESS_FILE_PATTERN);
+    if (!levelMatch) {
+      other.push(fileName);
+      continue;
+    }
+
+    const levelId = Number.parseInt(levelMatch[1], 10);
+    if (!Number.isFinite(levelId)) {
+      continue;
+    }
+
+    if (levelId >= 100) {
+      special.push(levelId);
+    } else {
+      levels.push(levelId);
+    }
+  }
+
+  levels.sort((left, right) => left - right);
+  special.sort((left, right) => left - right);
+  other.sort((left, right) =>
+    left.localeCompare(right, "en", { sensitivity: "base" }),
+  );
+
+  return {
+    slot: path.basename(slotDirectory),
+    directory: slotDirectory,
+    levels,
+    special,
+    other,
+  };
+}
+
+async function scanSaveFolder(inputPath: string): Promise<SaveScanResult> {
+  if (typeof inputPath !== "string" || !inputPath.trim()) {
+    throw new Error("A folder path is required.");
+  }
+
+  const resolvedInputPath = path.resolve(inputPath);
+  const inputStats = await fs.stat(resolvedInputPath);
+  const resolvedDirectoryPath = inputStats.isDirectory()
+    ? resolvedInputPath
+    : path.dirname(resolvedInputPath);
+
+  const inputName = path.basename(resolvedDirectoryPath);
+  const droppedSlotDirectory = SLOT_DIRECTORY_PATTERN.test(inputName)
+    ? resolvedDirectoryPath
+    : null;
+  let savesDirectory = droppedSlotDirectory
+    ? path.dirname(resolvedDirectoryPath)
+    : resolvedDirectoryPath;
+
+  if (!droppedSlotDirectory && inputName.toLowerCase() !== "saves") {
+    const nestedSavesDirectory = path.join(resolvedDirectoryPath, "Saves");
+    try {
+      const nestedSavesDirectoryStats = await fs.stat(nestedSavesDirectory);
+      if (nestedSavesDirectoryStats.isDirectory()) {
+        savesDirectory = nestedSavesDirectory;
+      }
+    } catch {
+      // Ignore when no nested Saves directory exists.
+    }
+  }
+
+  const savesDirectoryStats = await fs.stat(savesDirectory);
+  if (!savesDirectoryStats.isDirectory()) {
+    throw new Error("Could not read save folder.");
+  }
+
+  const slotDirectories = sortSlotDirectories(
+    (await fs.readdir(savesDirectory, { withFileTypes: true }))
+      .filter(
+        (entry) =>
+          entry.isDirectory() && SLOT_DIRECTORY_PATTERN.test(entry.name),
+      )
+      .map((entry) => path.join(savesDirectory, entry.name)),
+  );
+
+  const slots = await Promise.all(slotDirectories.map(scanSlotDirectory));
+  const normalizedDroppedSlotDirectory = droppedSlotDirectory
+    ? normalizePathForComparison(droppedSlotDirectory)
+    : null;
+
+  const selected =
+    (normalizedDroppedSlotDirectory
+      ? slots.find(
+          (slot) =>
+            normalizePathForComparison(slot.directory) ===
+            normalizedDroppedSlotDirectory,
+        )
+      : undefined) ??
+    slots.find((slot) => slot.slot.toLowerCase() === "slot1") ??
+    slots[0] ??
+    null;
+
+  return {
+    savesDirectory,
+    slot: selected?.slot ?? null,
+    directory: selected?.directory ?? null,
+    levels: selected?.levels ?? [],
+    special: selected?.special ?? [],
+    other: selected?.other ?? [],
+    slots,
+  };
+}
+
 ipcMain.handle("scan-saves", async () => {
   return runCli("scan", [], (chunk) => {
     emitCliOutput("scan", [], chunk);
   });
+});
+
+ipcMain.handle("scan-save-folder", async (_event, folderPath?: string) => {
+  if (typeof folderPath !== "string" || !folderPath.trim()) {
+    throw new Error("A folder path is required.");
+  }
+
+  return scanSaveFolder(folderPath);
 });
 
 ipcMain.handle("decode-save", async (_event, slotDirectory?: string) => {

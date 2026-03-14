@@ -48,7 +48,9 @@ declare global {
   interface Window {
     api: {
       ping: () => string;
+      getPathForFile: (file: File) => string;
       scan: () => Promise<SaveScanResult>;
+      scanSaveFolder: (folderPath: string) => Promise<SaveScanResult>;
       decode: (slotDirectory?: string) => Promise<DecodedSavePayload>;
       isUltrakillRunning: () => Promise<boolean>;
       readPreferences: (

@@ -1,8 +1,11 @@
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, webUtils } from "electron";
 
 contextBridge.exposeInMainWorld("api", {
   ping: () => "pong",
+  getPathForFile: (file: File) => webUtils.getPathForFile(file),
   scan: () => ipcRenderer.invoke("scan-saves"),
+  scanSaveFolder: (folderPath: string) =>
+    ipcRenderer.invoke("scan-save-folder", folderPath),
   decode: (slotDirectory?: string) =>
     ipcRenderer.invoke("decode-save", slotDirectory),
   isUltrakillRunning: () => ipcRenderer.invoke("is-ultrakill-running"),
