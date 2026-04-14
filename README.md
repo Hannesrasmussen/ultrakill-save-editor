@@ -1,1 +1,3 @@
-Ultrakill save editor built with Electron and Vue with a C# cli :)
+Ultrakill save editorI'm working on every now and then.
+
+Still a work in progress.
